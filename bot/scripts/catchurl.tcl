@@ -224,7 +224,7 @@ namespace eval ::urlcatch {
                     regsub {.* content="([^"]*)".*} $name {\1} name
 				set name [::htmlparse::mapEscapes $name]
 				set name [encoding convertto utf-8 $name]
-                                putserv "NOTICE $chan YouTube - $name"
+				putmsg $chan "YouTube - $name"
 				return
 			}
 		}
