@@ -1,0 +1,216 @@
+#################################################################
+#
+# URL Catcher Configuration
+# http://cell.isoveli.org/scripts
+#
+##################################################################
+
+##
+## See catchurl.tcl for appropriate sql table definition
+##
+
+
+## urls to log. left side specifies the protocol and
+## right side the pattern they are detected from.
+
+catch { array unset prefixes }
+array set prefixes {
+	"http"		"^http:// ^www\\."
+	"https"		"^https://"
+	"ftp"		"^ftp:// ^ftp\\."
+	"telnet"	"^telnet://"
+	"gopher"	"^gopher://"
+	"news:"		"^news:"
+	"mailto:"	"^mailto:"
+}
+#	"http"		"^http:// ^www\\. \\.fi \\.com \\.org \\.net"
+
+
+# these are not regarded as valid url postfixes and are stripped away
+set conf(strippostfix) ":ssa|:ssä|:lla|:llä|:lle|:iin|:n|'s"
+
+
+# commands used to determine if the url is valid or not.
+# if the command returns value 1 the url is regarded valid
+
+set conf(tryresolve) 0
+set conf(resolveipv4) {exec host $host 2>/dev/null}
+set conf(resolvefail) {not found}
+
+# ipv6 url support not implemeted yet
+#set resolveipv6 {exec host -t AAAA $host >/dev/null}
+
+
+# urls are logged only from these channels (separated with space (' '))
+set conf(activechannels) "#entropy"
+
+
+# ignore any urls containing the following strings. Use as many
+# lappend -lines as you need. Generally it's a good idea to ignore
+# urls to your own archive
+catch {unset conf(ignoreurls)}
+lappend conf(ignoreurls) {cell.yi.org}
+
+
+# sql settings
+
+# set this to 'mysql' or 'postgresql'
+set sqlconf(type) "mysql"
+
+set sqlconf(user) "CHANGE ME"
+set sqlconf(pass) "CHANGE ME"
+set sqlconf(table) "urllog"
+set sqlconf(host) "localhost"
+set sqlconf(db) "biletappi"
+
+
+
+## default handler's configuration
+####################################
+
+# should the catcher log duplicate url's if the channel differs?
+# 0=no 1=yes
+set conf(channel_specific_log) 0
+
+
+# tinyurl.com support
+set conf(createtinyurl) 0
+set conf(urlminlength) 60
+set conf(tinysay) "Ja lyhyemmin: "
+
+
+# log urls from users with +b flag (bots)
+set conf(logbots) 1
+
+
+
+
+## url archive configuration
+## if you're not using archiver, ignore these
+#############################################
+
+## Channels where archiving is done. Use empty ("") to use
+## setting from main config
+set conf(activechannels_archive) ""
+
+
+## Where to save files. See below for thumbnail configuration
+## If you are using channel specific log, you must create sub directories
+## named after your channels (without + # & chars)
+set conf(archivepath) "/var/www/archive/files"
+
+
+
+## Files to archive
+## This is the INITIAL CHECK, which is done according to file extension. This
+## avoids getting url headers for nothing
+## set conf(checkextension) 0 to disable, or 1 to enable
+
+catch { unset conf(archivefiles) }
+append conf(archivefiles) "swf txt pdf rtf tcl "
+append conf(archivefiles) "mpe mpeg mpg avi mov qt "
+append conf(archivefiles) "mp3 ogg mod sid xm kar mid midi wav ram rm "
+append conf(archivefiles) "jpg jpeg png bmp gif tif tiff "
+append conf(archivefiles) "zip rar tar tgz bz bz2 gz gtar "
+append conf(archivefiles) "bin class dms exe jar sea"
+set conf(checkextension) 0
+
+
+## archiver first performs a mime-type check using the url headers,
+## and after that the complete url is fetched. While headers are being
+## checked there is a chance of lockup (when the site doesn't respond).
+## Again, if conf(timeout) is too small, there is a chance that the
+## complete url doesn't get fetched. Think before configuring these values.
+
+set conf(headertimeout) 3000
+set conf(timeout) 15000
+
+
+## Content Type check. List types as 'content-type: expected_extensions[,maxsizebytes]'.
+## You can specify the action which is taken if the type doesnt match the file extension.
+## For convenience, content-type field is treated case insensitive regexp-pattern.
+## If maxsize is not defined the default is used.
+catch { unset conf(archivetypes) }
+
+## NOTE: you may want to comment out this one
+lappend conf(archivetypes) "application/octet-stream:		mp3 rar"
+
+lappend conf(archivetypes) "text/plain:				txt nfo"
+#lappend conf(archivetypes) "text/html:				html htm"
+
+lappend conf(archivetypes) "image/jpeg:				jpg jpeg jpe"
+lappend conf(archivetypes) "image/png:				png"
+lappend conf(archivetypes) "image/bmp:				bmp"
+lappend conf(archivetypes) "image/gif:				gif"
+lappend conf(archivetypes) "image/tiff:				tif tiff"
+
+lappend conf(archivetypes) "audio/mpeg:				mp3"
+lappend conf(archivetypes) "audio/ogg:				ogg"
+lappend conf(archivetypes) "audio/mod:				mod"
+lappend conf(archivetypes) "audio/sid:				sid"
+lappend conf(archivetypes) "audio/xm:				xm"
+lappend conf(archivetypes) "audio/midi:				kar mid midi"
+lappend conf(archivetypes) "audio/x-wav:			wav"
+
+lappend conf(archivetypes) "application/x-gtar:			gtar"
+lappend conf(archivetypes) "application/x-gzip:			gz"
+lappend conf(archivetypes) "application/octet-stream:		bin class dms exe jar sea"
+lappend conf(archivetypes) "application/zip:			zip"
+lappend conf(archivetypes) "application/x-shockwave-flash:	swf"
+lappend conf(archivetypes) "application/pdf:			pdf"
+lappend conf(archivetypes) "application/rtf:			rtf"
+lappend conf(archivetypes) "application/x-tcl:			tcl"
+
+lappend conf(archivetypes) "video/mpeg:				mpe mpeg mpg"
+lappend conf(archivetypes) "video/x-msvideo:			avi"
+lappend conf(archivetypes) "video/quicktime:			mov qt"
+
+
+## Do you wish to make a public notice of the url's mime-type
+## every time something gets logged?
+set conf(floodmime) 0
+
+
+## What if file extension differs from the mime type?
+## 0 = do not archive, 1 = archive
+set conf(archivediff) 1
+
+
+## Should there be a public notice/warning?
+## 0 = no public notice, 1 = send notice to channel
+set conf(warndiff) 1
+
+
+## Add correct mimetype file extension if needed?
+set conf(correctext) 1
+
+
+## Max size of files to archive (bytes) if not specified
+set conf(filemaxsizebytes) 5500000
+
+
+## Notify user pasting an URL which has the same content that some old url (0/1)
+set conf(notifyold) 1
+
+
+## Public whine for doing that ^^^^
+set conf(whine) "Wanha paska eri nimellä"
+
+
+## Thumbnail preferences
+set conf(createthumbs) 1
+set conf(thumbnailpath) "/var/www/archive/files/thumb"
+
+
+
+## Shell command for creating thumbnail preferences
+## convert is a part of imagemagick software. apt-get install imagemagick
+
+## The following variables are passed to exec thru tcl list command, so
+## they are safe from any []&>< characters.
+## $imagename	image name with full path ($conf(archivepath)/$file)
+## $thumbname	thumbnail name with full path ($conf(thumbnailpath)/$file)
+
+set conf(thumbscript) {convert -geometry 150x150 $imagename $thumbname &}
+
+set conf(youtube) 1

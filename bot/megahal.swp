@@ -1,0 +1,22 @@
+#
+#	The word on the left is changed to the word on the
+#	right when used as a keyword
+#
+MINÄ	SINÄ
+SINÄ	MINÄ
+MÄ	SÄ
+SÄ	MÄ
+MUN	SUN
+SUN	MEITSIN
+MEITSIN	TEITSIN
+TEITSIN	MEITSIN
+ME	TE
+TE	ME
+MEIDÄN	TEIDÄN
+TEIDÄN	MEIDÄN
+JÄBÄ	MEITSI
+JABA	MEITSI
+OOT	OON
+OON	OOT
+OLET	OLEN
+OLEN	OLET

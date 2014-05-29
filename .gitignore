@@ -1,0 +1,5 @@
+bot/DEBUG
+bot/logs/*
+bot/pid.biletappi
+bot/biletappi.user
+bot/scripts/catchurl.conf
