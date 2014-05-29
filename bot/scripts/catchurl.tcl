@@ -56,10 +56,12 @@
 
 
 package require http
+package require tls
 package require htmlparse
 
 namespace eval ::urlcatch {
     set scriptversion 1.1.2
+    ::http::register https 443 ::tls::socket
 
     # if cellgen package is available, let's use it for autoupdate
     if {[catch { ::cell::registerautoupdate $scriptversion "http://cell.isoveli.org/scripts/catchurl.tcl" } error]} {
@@ -153,6 +155,12 @@ namespace eval ::urlcatch {
                     createtinyurl $url $chan
                 }
             }
+
+            if {$conf(youtube)} {
+                if {[regexp -nocase -- "youtube.com/watch" $url]} {
+                    createyoutube $url $chan
+                }
+            }
 	}
 
 	# if one or more url's are recorded, write something to the log
@@ -205,95 +213,113 @@ namespace eval ::urlcatch {
 	}
     }
 
-    ########################
-    ###################################
-    ###########################################################
-    ###########################################################
+    proc createyoutube {url chan} {
+	set token [http::geturl $url -timeout 10000]
+	upvar #0 $token st
+	if {$st(status) == {ok} || $st(status) == {eof}} {
+            set data [split $st(body) \n]
+            for {set i 0} {$i < [llength $data]} {incr i} {
+                if {[regexp -nocase -- {<meta property="og:title"} [lindex $data $i]]} {
+                    set name [string trim [lindex $data $i]]
+                    regsub {.* content="([^"]*)".*} $name {\1} name
+				set name [::htmlparse::mapEscapes $name]
+				set name [encoding convertto utf-8 $name]
+				putmsg $chan "YouTube - $name"
+				return
+			}
+		}
+	}
+}
 
-    bind pubm - *.%* urlcatch::urlcatchpub
-    bind topc - *.%* urlcatch::urlcatchpub
-    bind msg - testurl urlcatch::urlcatchmsg
+########################
+###################################
+###########################################################
+###########################################################
 
-    variable urlhandlers ""
+bind pubm - *.%* urlcatch::urlcatchpub
+bind topc - *.%* urlcatch::urlcatchpub
+bind msg - testurl urlcatch::urlcatchmsg
+
+variable urlhandlers ""
 
 
-    proc escape {string} {
-        regsub -all -- "'" $string "\\\\'" string
-        return $string
+proc escape {string} {
+    regsub -all -- "'" $string "\\\\'" string
+    return $string
+}
+
+
+proc addhandler {func} {
+    variable urlhandlers
+    lappend urlhandlers $func
+}
+
+
+proc sendtohandlers {urllist nick handle uhost chan text} {
+    variable urlhandlers
+    variable conf
+
+    if {$conf(activechannels) != ""} { if { [lsearch -exact [split [string tolower $conf(activechannels)] " "] [string tolower $chan]] == -1} { return } }
+    if {$handle == "*"} { set handle $nick }
+
+    foreach handler $urlhandlers {
+        set erno [catch {$handler $urllist $nick $handle $uhost $chan $text} error]
+        if {$erno == 1} { putlog "catchurl: You have error on your url handler '$handler': $error" }
     }
+}
 
 
-    proc addhandler {func} {
-        variable urlhandlers
-        lappend urlhandlers $func
+proc urlcatchmsg {nick handle uhost args} {
+    urlcatchpub $nick $handle $uhost $nick $args
+}
+
+
+proc urlcatchpub {nick uhost handle chan para} {
+    set urllist [urlcatch::getpotentialurls $para]
+
+    if {[llength $urllist]} {
+	set urllist [urlcatch::parseworkingurls $urllist]
+	if {[llength $urllist]} {
+            urlcatch::sendtohandlers $urllist $nick $handle $uhost $chan $para
+	}
     }
+}
 
 
-    proc sendtohandlers {urllist nick handle uhost chan text} {
-        variable urlhandlers
-        variable conf
+proc parseworkingurls {list} {
+    variable conf
 
-        if {$conf(activechannels) != ""} { if { [lsearch -exact [split [string tolower $conf(activechannels)] " "] [string tolower $chan]] == -1} { return } }
-        if {$handle == "*"} { set handle $nick }
+    if {$conf(tryresolve) == 0} { return $list }
 
-        foreach handler $urlhandlers {
-            set erno [catch {$handler $urllist $nick $handle $uhost $chan $text} error]
-            if {$erno == 1} { putlog "catchurl: You have error on your url handler '$handler': $error" }
+    set urllist [list]
+    foreach url $list {
+        #ipv4
+        if {[lindex $url 7] == 0} {
+            set host [lindex $url 4]
+            regsub -all -- {\$host} $conf(resolveipv4) $host cc
+            if {![regexp -nocase -- $conf(resolvefail) [eval "$cc"]]} { lappend urllist $url } else { putlog "[lindex $url 0] does not resolve" }
         }
     }
+    return $urllist
+}
 
 
-    proc urlcatchmsg {nick handle uhost args} {
-        urlcatchpub $nick $handle $uhost $nick $args
-    }
+proc getpotentialurls {para} {
+    variable prefixes
+    variable conf
 
+    set urllist ""
+    set urllistlong ""
+    set args [split $para " "]
 
-    proc urlcatchpub {nick uhost handle chan para} {
-        set urllist [urlcatch::getpotentialurls $para]
+    foreach para $args {
 
-        if {[llength $urllist]} {
-            set urllist [urlcatch::parseworkingurls $urllist]
-            if {[llength $urllist]} {
-                urlcatch::sendtohandlers $urllist $nick $handle $uhost $chan $para
-            }
-        }
-    }
+        set Umatch 0
+        set Uurl ""
+        set Ulogin ""
 
-
-    proc parseworkingurls {list} {
-        variable conf
-
-        if {$conf(tryresolve) == 0} { return $list }
-
-        set urllist [list]
-        foreach url $list {
-            #ipv4
-            if {[lindex $url 7] == 0} {
-                set host [lindex $url 4]
-                regsub -all -- {\$host} $conf(resolveipv4) $host cc
-                if {![regexp -nocase -- $conf(resolvefail) [eval "$cc"]]} { lappend urllist $url } else { putlog "[lindex $url 0] does not resolve" }
-            }
-        }
-        return $urllist
-    }
-
-
-    proc getpotentialurls {para} {
-        variable prefixes
-        variable conf
-
-        set urllist ""
-        set urllistlong ""
-        set args [split $para " "]
-
-        foreach para $args {
-
-            set Umatch 0
-            set Uurl ""
-            set Ulogin ""
-
-            # strip " and ' quotation marks
-            if {[regexp -- {^["']} $para]} { regsub -all -- {^[\("']|[\)"']$} $para {} para }
+        # strip " and ' quotation marks
+        if {[regexp -- {^["']} $para]} { regsub -all -- {^[\("']|[\)"']$} $para {} para }
 
 		regexp -nocase -- {([^:]+://)*([^:]+[^@]+@+)([^:/]+)(:([0-9]+))?(/*.*)} $para \
 		Uurl Uprotocol Ulogin Uhost Ux Uport Upath
