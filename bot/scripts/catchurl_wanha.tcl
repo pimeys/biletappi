@@ -58,8 +58,22 @@ namespace eval ::urlcatch {
                         } else {
                             set t [expr [clock seconds] - [lindex $duplicate 2]]
                             if {$t >= 31536000} {
+                                set days [expr $t % 31536000 / 86400]
                                 set t [expr $t / 31536000]
-                                if {$t == 1} {set t "vuosi"} else {set t "$t vuotta"}
+
+                                if {$t == 1} {
+                                    if {$days <= 1} {
+                                        set t "vuosi ja yksi päivä"
+                                    } else {
+                                        set t "vuosi ja $days päivää"
+                                    }
+                                } else {
+                                    if {$days == 1} {
+                                        set t "$t vuotta ja yksi päivä"
+                                    } else {
+                                        set t "$t vuotta ja $days päivää"
+                                    }
+                                }
                             } elseif {$t >= 86400} {
                                 set t [expr $t / 86400]
                                 if {$t == 1} {set t "päivä"} else {set t "$t päivää"}
