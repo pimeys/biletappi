@@ -59,13 +59,13 @@ namespace eval ::urlcatch {
                             set t [expr [clock seconds] - [lindex $duplicate 2]]
                             if {$t >= 86400} {
                                 set t [expr $t / 86400]
-                                if {$t == 1} {set t "$t päivän"} else {set t "$t päivää"}
+                                if {$t == 1} {set t "päivä"} else {set t "$t päivää"}
                             } elseif {$t >= 3600} {
                                 set t [expr $t / 3600]
-                                if {$t == 1} {set t "$t tunnin"} else {set t "$t tuntia"}
+                                if {$t == 1} {set t "tunti"} else {set t "$t tuntia"}
                             } elseif {$t >= 60} {
                                 set t [expr $t / 60]
-                                if {$t == 1} {set t "$t minsan"} else {set t "$t minsaa"}
+                                if {$t == 1} {set t "minuutti"} else {set t "$t minsaa"}
                             } else {
                                 set t "melkein minsan"
                             }
