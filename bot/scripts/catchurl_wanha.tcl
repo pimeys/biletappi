@@ -57,7 +57,10 @@ namespace eval ::urlcatch {
                             putmsg $chan "$nick, joo"
                         } else {
                             set t [expr [clock seconds] - [lindex $duplicate 2]]
-                            if {$t >= 86400} {
+                            if {$t >= 31536000} {
+                                set t [expr $t / 31536000]
+                                if {$t == 1} {set t "vuosi"} else {set t "$t vuotta"}
+                            } elseif {$t >= 86400} {
                                 set t [expr $t / 86400]
                                 if {$t == 1} {set t "päivä"} else {set t "$t päivää"}
                             } elseif {$t >= 3600} {
@@ -67,7 +70,7 @@ namespace eval ::urlcatch {
                                 set t [expr $t / 60]
                                 if {$t == 1} {set t "minuutti"} else {set t "$t minsaa"}
                             } else {
-                                set t "melkein minsan"
+                                set t "melkein minuutti"
                             }
                             putmsg $chan "$nick, $old_whine, $original_poster pastes jo $t sitten"
                         }
